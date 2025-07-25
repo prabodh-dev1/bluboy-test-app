@@ -22,7 +22,7 @@ export interface ApiServiceHook {
 }
 
 export const useApiService = (): ApiServiceHook => {
-  const { currentEnvironment, currentUsers } = useAuth();
+  const { currentEnvironment, authenticatedUsers, updateUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,12 +37,12 @@ export const useApiService = (): ApiServiceHook => {
   }, [currentEnvironment, apiService]);
 
   const getAuthTokenForUser = (userId: string): string | null => {
-    const user = currentUsers.find(u => u.id === userId);
+    const user = authenticatedUsers.find(u => u.id === userId);
     return user?.accessToken || null;
   };
 
   const refreshTokenForUser = async (userId: string): Promise<string> => {
-    const user = currentUsers.find(u => u.id === userId);
+    const user = authenticatedUsers.find(u => u.id === userId);
     if (!user) {
       throw new Error('User not found');
     }
@@ -52,8 +52,8 @@ export const useApiService = (): ApiServiceHook => {
       const newToken = await user.user.getIdToken(true);
       
       // Update the user's token in the context
-      // Note: This would require updating the AuthContext to support token refresh
-      // For now, we'll return the new token
+      updateUser(userId, { accessToken: newToken });
+      
       return newToken;
     } catch (err) {
       console.error('Token refresh failed:', err);
@@ -70,10 +70,10 @@ export const useApiService = (): ApiServiceHook => {
       setIsLoading(true);
 
       // Use the first available user if no specific user ID provided
-      const targetUserId = userId || currentUsers[0]?.id;
+      const targetUserId = userId || authenticatedUsers[0]?.id;
       
       if (!targetUserId) {
-        throw new Error('No authenticated users available');
+        throw new Error('No authenticated users available. Please sign in at least one player.');
       }
 
       let authToken = getAuthTokenForUser(targetUserId);

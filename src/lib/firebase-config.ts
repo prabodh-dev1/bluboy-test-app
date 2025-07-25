@@ -26,46 +26,83 @@ const prodFirebaseConfig = {
 
 export type Environment = 'test' | 'production';
 
-let currentApp: FirebaseApp | null = null;
-let currentAuth: Auth | null = null;
-let currentAnalytics: Analytics | null = null;
-let currentEnvironment: Environment = 'test';
+// Store multiple Firebase instances for multi-player testing
+interface FirebaseInstance {
+  app: FirebaseApp;
+  auth: Auth;
+  analytics: Analytics | null;
+  environment: Environment;
+  playerId: string;
+}
 
-export const initializeFirebase = (environment: Environment): { app: FirebaseApp; auth: Auth; analytics: Analytics | null } => {
+const firebaseInstances = new Map<string, FirebaseInstance>();
+
+export const createFirebaseInstance = (environment: Environment, playerId: string): FirebaseInstance => {
   const config = environment === 'test' ? testFirebaseConfig : prodFirebaseConfig;
+  const instanceId = `${environment}-${playerId}`;
   
-  // Initialize Firebase app
-  currentApp = initializeApp(config, `app-${environment}`);
-  currentAuth = getAuth(currentApp);
+  // Check if instance already exists
+  if (firebaseInstances.has(instanceId)) {
+    return firebaseInstances.get(instanceId)!;
+  }
+  
+  // Create new Firebase app instance with unique name
+  const app = initializeApp(config, instanceId);
+  const auth = getAuth(app);
   
   // Initialize Analytics only in browser environment
+  let analytics: Analytics | null = null;
   if (typeof window !== 'undefined') {
-    currentAnalytics = getAnalytics(currentApp);
+    try {
+      analytics = getAnalytics(app);
+    } catch (error) {
+      console.warn('Analytics initialization failed:', error);
+    }
   }
   
-  currentEnvironment = environment;
-  
-  return {
-    app: currentApp,
-    auth: currentAuth,
-    analytics: currentAnalytics
+  const instance: FirebaseInstance = {
+    app,
+    auth,
+    analytics,
+    environment,
+    playerId
   };
+  
+  firebaseInstances.set(instanceId, instance);
+  return instance;
 };
 
-export const getCurrentFirebaseInstances = () => {
-  if (!currentApp || !currentAuth) {
-    throw new Error('Firebase not initialized. Call initializeFirebase first.');
-  }
+export const getFirebaseInstance = (environment: Environment, playerId: string): FirebaseInstance | null => {
+  const instanceId = `${environment}-${playerId}`;
+  return firebaseInstances.get(instanceId) || null;
+};
+
+export const removeFirebaseInstance = (environment: Environment, playerId: string): void => {
+  const instanceId = `${environment}-${playerId}`;
+  const instance = firebaseInstances.get(instanceId);
   
-  return {
-    app: currentApp,
-    auth: currentAuth,
-    analytics: currentAnalytics,
-    environment: currentEnvironment
-  };
+  if (instance) {
+    // Clean up the instance
+    try {
+      instance.app.delete();
+    } catch (error) {
+      console.warn('Error deleting Firebase app:', error);
+    }
+    firebaseInstances.delete(instanceId);
+  }
+};
+
+export const getAllFirebaseInstances = (environment?: Environment): FirebaseInstance[] => {
+  const instances = Array.from(firebaseInstances.values());
+  return environment ? instances.filter(instance => instance.environment === environment) : instances;
 };
 
 export const getFirebaseConfig = (environment: Environment) => {
   return environment === 'test' ? testFirebaseConfig : prodFirebaseConfig;
+};
+
+// Utility function to generate unique player IDs
+export const generatePlayerId = (): string => {
+  return `player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
