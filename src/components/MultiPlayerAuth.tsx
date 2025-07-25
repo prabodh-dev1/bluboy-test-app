@@ -88,8 +88,7 @@ export const MultiPlayerAuth: React.FC<MultiPlayerAuthProps> = ({
       // Configure Google provider
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({
-        prompt: 'select_account', // Force account selection
-        hd: undefined // Allow any domain
+        prompt: 'select_account' // Force account selection
       });
 
       // Add additional scopes if needed
@@ -133,7 +132,11 @@ export const MultiPlayerAuth: React.FC<MultiPlayerAuthProps> = ({
       console.error('Sign in error for slot', slotId, ':', error);
       
       // Clean up Firebase instance on error
-      removeFirebaseInstance(environment, slot.playerId);
+      try {
+        await removeFirebaseInstance(environment, slot.playerId);
+      } catch (cleanupError) {
+        console.warn('Error cleaning up Firebase instance:', cleanupError);
+      }
       
       updateSlotState(slotId, { 
         isSigningIn: false,
@@ -154,7 +157,7 @@ export const MultiPlayerAuth: React.FC<MultiPlayerAuthProps> = ({
       await firebaseSignOut(slot.auth);
       
       // Remove Firebase instance
-      removeFirebaseInstance(environment, slot.playerId);
+      await removeFirebaseInstance(environment, slot.playerId);
       
       // Generate new player ID for next sign in
       const newPlayerId = generatePlayerId();

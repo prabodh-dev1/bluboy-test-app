@@ -1,4 +1,4 @@
-import { initializeApp, FirebaseApp } from "firebase/app";
+import { initializeApp, FirebaseApp, deleteApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
 import { getAnalytics, Analytics } from "firebase/analytics";
 
@@ -77,14 +77,14 @@ export const getFirebaseInstance = (environment: Environment, playerId: string):
   return firebaseInstances.get(instanceId) || null;
 };
 
-export const removeFirebaseInstance = (environment: Environment, playerId: string): void => {
+export const removeFirebaseInstance = async (environment: Environment, playerId: string): Promise<void> => {
   const instanceId = `${environment}-${playerId}`;
   const instance = firebaseInstances.get(instanceId);
   
   if (instance) {
     // Clean up the instance
     try {
-      instance.app.delete();
+      await deleteApp(instance.app);
     } catch (error) {
       console.warn('Error deleting Firebase app:', error);
     }
