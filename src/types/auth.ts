@@ -8,6 +8,7 @@ export interface AuthenticatedUser {
   refreshToken?: string;
   environment: Environment;
   signInTime: number;
+  tokenExpiry?: number;
   displayName: string | null;
   email: string | null;
   photoURL: string | null;

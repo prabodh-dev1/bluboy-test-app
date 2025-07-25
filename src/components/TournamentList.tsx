@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Tournament } from '@/lib/api-config';
 import { useApiService } from '@/hooks/useApiService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,8 +22,12 @@ export const TournamentList: React.FC = () => {
   const [upcomingTournaments, setUpcomingTournaments] = useState<Tournament[]>([]);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const loadTournaments = async () => {
+  const loadTournaments = useCallback(async () => {
     if (authenticatedUsers.length === 0) {
+      // Clear tournaments when no users are authenticated
+      setTournaments([]);
+      setUpcomingTournaments([]);
+      setLastRefresh(null);
       return;
     }
 
@@ -39,11 +43,11 @@ export const TournamentList: React.FC = () => {
     } catch (err) {
       console.error('Failed to load tournaments:', err);
     }
-  };
+  }, [authenticatedUsers, fetchTambolaTournaments, fetchUpcomingTournaments]);
 
   useEffect(() => {
     loadTournaments();
-  }, [authenticatedUsers, currentEnvironment]);
+  }, [loadTournaments]);
 
   const formatDateTime = (epochTime: number): string => {
     return new Date(epochTime * 1000).toLocaleString();
@@ -120,7 +124,7 @@ export const TournamentList: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <div key="error-section" className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <div className="flex items-center space-x-2">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <span className="text-red-800 font-medium">Error loading tournaments</span>
@@ -131,7 +135,7 @@ export const TournamentList: React.FC = () => {
 
       {/* Upcoming Tournaments Section */}
       {upcomingTournaments.length > 0 && (
-        <div className="mb-8">
+        <div key="upcoming-section" className="mb-8">
           <h4 className="text-md font-medium text-gray-900 mb-4 flex items-center space-x-2">
             <Calendar className="h-4 w-4" />
             <span>Upcoming Tournaments ({upcomingTournaments.length})</span>
@@ -152,22 +156,22 @@ export const TournamentList: React.FC = () => {
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div className="flex items-center space-x-1">
+                    <div key={`time-${tournament.id}`} className="flex items-center space-x-1">
                       <Clock className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">Starts in {formatTimeRemaining(tournament.start)}</span>
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div key={`date-${tournament.id}`} className="flex items-center space-x-1">
                       <Calendar className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">{formatDateTime(tournament.start)}</span>
                     </div>
                     {tournament.entry_fee && (
-                      <div className="flex items-center space-x-1">
+                      <div key={`fee-${tournament.id}`} className="flex items-center space-x-1">
                         <DollarSign className="h-4 w-4 text-gray-400" />
                         <span className="text-gray-600">₹{tournament.entry_fee}</span>
                       </div>
                     )}
                     {tournament.max_players && (
-                      <div className="flex items-center space-x-1">
+                      <div key={`players-${tournament.id}`} className="flex items-center space-x-1">
                         <Users className="h-4 w-4 text-gray-400" />
                         <span className="text-gray-600">
                           {tournament.current_players || 0}/{tournament.max_players}
@@ -190,25 +194,25 @@ export const TournamentList: React.FC = () => {
       )}
 
       {/* All Tournaments Section */}
-      <div>
+      <div key="all-tournaments-section">
         <h4 className="text-md font-medium text-gray-900 mb-4 flex items-center space-x-2">
           <Trophy className="h-4 w-4" />
           <span>All Tambola Tournaments ({tournaments.length})</span>
         </h4>
         
         {tournaments.length === 0 ? (
-          <div className="text-center py-8">
+          <div key="empty-state" className="text-center py-8">
             {isLoading ? (
-              <div className="flex items-center justify-center space-x-2">
+              <div key="loading-state" className="flex items-center justify-center space-x-2">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
                 <span className="text-gray-600">Loading tournaments...</span>
               </div>
             ) : (
-              <p className="text-gray-600">No Tambola tournaments found</p>
+              <p key="no-tournaments" className="text-gray-600">No Tambola tournaments found</p>
             )}
           </div>
         ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+          <div key="tournaments-list" className="space-y-3 max-h-96 overflow-y-auto">
             {tournaments.map((tournament) => {
               const { status, color } = getTournamentStatus(tournament);
               return (
@@ -222,9 +226,9 @@ export const TournamentList: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
-                        <span>ID: {tournament.id}</span>
-                        <span>Start: {formatDateTime(tournament.start)}</span>
-                        <span>End: {formatDateTime(tournament.end)}</span>
+                        <span key={`id-${tournament.id}`}>ID: {tournament.id}</span>
+                        <span key={`start-${tournament.id}`}>Start: {formatDateTime(tournament.start)}</span>
+                        <span key={`end-${tournament.id}`}>End: {formatDateTime(tournament.end)}</span>
                       </div>
                     </div>
                   </div>

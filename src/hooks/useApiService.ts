@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ApiService, Tournament } from '@/lib/api-config';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthenticatedUser } from '@/types/auth';
@@ -36,12 +36,12 @@ export const useApiService = (): ApiServiceHook => {
     apiService.switchEnvironment(currentEnvironment);
   }, [currentEnvironment, apiService]);
 
-  const getAuthTokenForUser = (userId: string): string | null => {
+  const getAuthTokenForUser = useCallback((userId: string): string | null => {
     const user = authenticatedUsers.find(u => u.id === userId);
     return user?.accessToken || null;
-  };
+  }, [authenticatedUsers]);
 
-  const refreshTokenForUser = async (userId: string): Promise<string> => {
+  const refreshTokenForUser = useCallback(async (userId: string): Promise<string> => {
     const user = authenticatedUsers.find(u => u.id === userId);
     if (!user) {
       throw new Error('User not found');
@@ -59,9 +59,9 @@ export const useApiService = (): ApiServiceHook => {
       console.error('Token refresh failed:', err);
       throw new Error('Failed to refresh authentication token');
     }
-  };
+  }, [authenticatedUsers, updateUser]);
 
-  const executeWithAuth = async <T>(
+  const executeWithAuth = useCallback(async <T>(
     operation: (token: string) => Promise<T>,
     userId?: string
   ): Promise<T> => {
@@ -100,32 +100,32 @@ export const useApiService = (): ApiServiceHook => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [authenticatedUsers, getAuthTokenForUser, refreshTokenForUser]);
 
-  const fetchTournaments = async (userId?: string): Promise<Tournament[]> => {
+  const fetchTournaments = useCallback(async (userId?: string): Promise<Tournament[]> => {
     return executeWithAuth(async (token) => {
       const response = await apiService.getAppConfig(token);
       return response.tournaments;
     }, userId);
-  };
+  }, [executeWithAuth, apiService]);
 
-  const fetchTambolaTournaments = async (userId?: string): Promise<Tournament[]> => {
+  const fetchTambolaTournaments = useCallback(async (userId?: string): Promise<Tournament[]> => {
     return executeWithAuth(async (token) => {
       return await apiService.getTambolaTournaments(token);
     }, userId);
-  };
+  }, [executeWithAuth, apiService]);
 
-  const fetchUpcomingTournaments = async (userId?: string): Promise<Tournament[]> => {
+  const fetchUpcomingTournaments = useCallback(async (userId?: string): Promise<Tournament[]> => {
     return executeWithAuth(async (token) => {
       return await apiService.getUpcomingTambolaTournaments(token);
     }, userId);
-  };
+  }, [executeWithAuth, apiService]);
 
-  const fetchActiveTournaments = async (userId?: string): Promise<Tournament[]> => {
+  const fetchActiveTournaments = useCallback(async (userId?: string): Promise<Tournament[]> => {
     return executeWithAuth(async (token) => {
       return await apiService.getActiveTambolaTournaments(token);
     }, userId);
-  };
+  }, [executeWithAuth, apiService]);
 
   return {
     apiService,

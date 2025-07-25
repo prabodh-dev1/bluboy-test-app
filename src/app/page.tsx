@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { MultiPlayerAuth } from '@/components/MultiPlayerAuth';
 import { EnvironmentSwitcher } from '@/components/EnvironmentSwitcher';
@@ -10,7 +10,6 @@ import {
   GamepadIcon, 
   Users, 
   Settings, 
-  Trophy,
   AlertCircle,
   Info
 } from 'lucide-react';
@@ -23,9 +22,9 @@ export default function Dashboard() {
     error: authError 
   } = useAuth();
 
-  const handleUsersChange = (users: AuthenticatedUser[]) => {
+  const handleUsersChange = useCallback((users: AuthenticatedUser[]) => {
     setAuthenticatedUsers(users);
-  };
+  }, [setAuthenticatedUsers]);
 
   return (
     <div className="min-h-screen bg-gray-50">

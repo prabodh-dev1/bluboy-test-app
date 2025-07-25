@@ -1,8 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { Environment } from '@/lib/firebase-config';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { Environment, getFirebaseInstance } from '@/lib/firebase-config';
 import { AuthenticatedUser } from '@/types/auth';
+import { AuthStorage } from '@/lib/auth-storage';
 
 interface AuthContextType {
   // Current environment
@@ -20,6 +21,7 @@ interface AuthContextType {
   clearAllUsers: () => void;
   getUserById: (userId: string) => AuthenticatedUser | null;
   getActiveUsersCount: () => number;
+  refreshUserToken: (userId: string) => Promise<boolean>;
   
   // Loading states
   isLoading: boolean;
@@ -39,13 +41,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load persisted users on app initialization (MultiPlayerAuth handles the actual restoration)
+  useEffect(() => {
+    const loadPersistedUsers = () => {
+      try {
+        const storedUsers = AuthStorage.loadUsers();
+        const usersForCurrentEnv = storedUsers.filter(u => u.environment === currentEnvironment);
+        
+        console.log(`Found ${usersForCurrentEnv.length} persisted users for ${currentEnvironment}`);
+        // MultiPlayerAuth component will handle full restoration with Firebase instances
+      } catch (error) {
+        console.warn('Failed to load persisted users:', error);
+      }
+    };
+
+    loadPersistedUsers();
+  }, [currentEnvironment]);
+
   // Clear users when environment changes
   useEffect(() => {
     setAuthenticatedUsers([]);
     setError(null);
   }, [currentEnvironment]);
 
-  const addUser = (user: AuthenticatedUser) => {
+  // Save users to localStorage whenever authenticatedUsers changes
+  useEffect(() => {
+    if (authenticatedUsers.length > 0) {
+      AuthStorage.saveUsers(authenticatedUsers);
+      console.log(`Saved ${authenticatedUsers.length} users to localStorage:`, 
+        authenticatedUsers.map(u => u.displayName));
+    }
+  }, [authenticatedUsers]);
+
+  const addUser = useCallback((user: AuthenticatedUser) => {
     // Check if user already exists
     const existingUser = authenticatedUsers.find(u => u.id === user.id);
     if (existingUser) {
@@ -59,25 +87,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    setAuthenticatedUsers(prev => [...prev, user]);
+    setAuthenticatedUsers(prev => {
+      const newUsers = [...prev, user];
+      return newUsers;
+    });
     setError(null);
-  };
+  }, [authenticatedUsers, currentEnvironment]);
 
-  const removeUser = (userId: string) => {
-    setAuthenticatedUsers(prev => prev.filter(u => u.id !== userId));
+  const removeUser = useCallback((userId: string) => {
+    setAuthenticatedUsers(prev => {
+      const filteredUsers = prev.filter(u => u.id !== userId);
+      // Update localStorage
+      AuthStorage.removeUser(userId);
+      return filteredUsers;
+    });
     setError(null);
-  };
+  }, []);
 
-  const updateUser = (userId: string, updates: Partial<AuthenticatedUser>) => {
-    setAuthenticatedUsers(prev => prev.map(user => 
-      user.id === userId ? { ...user, ...updates } : user
-    ));
-  };
+  const updateUser = useCallback((userId: string, updates: Partial<AuthenticatedUser>) => {
+    setAuthenticatedUsers(prev => {
+      const updatedUsers = prev.map(user => 
+        user.id === userId ? { ...user, ...updates } : user
+      );
+      return updatedUsers;
+    });
+  }, []);
 
-  const clearAllUsers = () => {
+  const clearAllUsers = useCallback(() => {
     setAuthenticatedUsers([]);
+    AuthStorage.clearAll();
     setError(null);
-  };
+  }, []);
+
+  const refreshUserToken = useCallback(async (userId: string): Promise<boolean> => {
+    try {
+      const user = authenticatedUsers.find(u => u.id === userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Get fresh token from Firebase
+      const newToken = await user.user.getIdToken(true);
+      
+      // Update user with new token
+      const updatedUser = {
+        ...user,
+        accessToken: newToken,
+      };
+
+      // Update in memory
+      updateUser(userId, { accessToken: newToken });
+      
+      // Update in localStorage
+      AuthStorage.updateUserToken(userId, newToken, user.refreshToken);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to refresh token for user:', userId, error);
+      setError(`Token refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    }
+  }, [authenticatedUsers, updateUser]);
 
   const getUserById = (userId: string): AuthenticatedUser | null => {
     return authenticatedUsers.find(u => u.id === userId) || null;
@@ -88,6 +158,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const handleEnvironmentChange = (env: Environment) => {
+    // Save current users before switching environment
+    if (authenticatedUsers.length > 0) {
+      AuthStorage.saveUsers(authenticatedUsers);
+    }
+    
     setCurrentEnvironment(env);
     setError(null);
   };
@@ -103,6 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearAllUsers,
     getUserById,
     getActiveUsersCount,
+    refreshUserToken,
     isLoading,
     error,
     setError

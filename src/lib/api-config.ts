@@ -69,7 +69,8 @@ export class ApiService {
   }
 
   async getAppConfig(authToken: string): Promise<AppConfigResponse> {
-    const url = `${this.config.baseUrl}/api/v1/app/config`;
+    // Use local API proxy to bypass CORS
+    const url = `/api/proxy/app/config?environment=${this.environment}`;
     
     try {
       const response = await fetch(url, {
@@ -78,7 +79,8 @@ export class ApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API request failed: ${response.status} ${response.statusText}`);
       }
 
       const data: AppConfigResponse = await response.json();
