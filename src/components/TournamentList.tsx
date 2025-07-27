@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Tournament } from '@/lib/api-config';
 import { useApiService } from '@/hooks/useApiService';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthenticatedUser } from '@/types/auth';
+import { TambolaTicket } from './TambolaTicket';
 import { 
   Trophy, 
   Clock, 
@@ -12,8 +14,128 @@ import {
   RefreshCw, 
   Calendar,
   Play,
-  AlertCircle
+  AlertCircle,
+  UserCheck,
+  UserX,
+  Ticket
 } from 'lucide-react';
+
+interface PlayerSubscription {
+  tournamentId: string;
+  userId: string;
+  isSubscribed: boolean;
+  hasTicket: boolean;
+  ticketData?: TambolaTicketData;
+}
+
+interface TambolaTicketData {
+  id: string;
+  numbers: (number | null)[][];
+  markedNumbers: Set<number>;
+}
+
+interface PlayerSubscribeButtonProps {
+  tournament: Tournament;
+  user: AuthenticatedUser;
+  playerIndex: number;
+}
+
+const PlayerSubscribeButton: React.FC<PlayerSubscribeButtonProps> = ({ 
+  tournament, 
+  user, 
+  playerIndex 
+}) => {
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasTicket, setHasTicket] = useState(false);
+  const [showTicket, setShowTicket] = useState(false);
+
+  const handleSubscribe = async () => {
+    setIsLoading(true);
+    try {
+      // Placeholder API call - will be replaced with actual API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsSubscribed(true);
+      setHasTicket(true);
+      console.log(`Player ${playerIndex} (${user.displayName}) subscribed to tournament ${tournament.id}`);
+    } catch (error) {
+      console.error('Subscription failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    setIsLoading(true);
+    try {
+      // Placeholder API call - will be replaced with actual API
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setIsSubscribed(false);
+      setHasTicket(false);
+      setShowTicket(false);
+      console.log(`Player ${playerIndex} (${user.displayName}) unsubscribed from tournament ${tournament.id}`);
+    } catch (error) {
+      console.error('Unsubscription failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col space-y-1">
+      <div className="flex items-center space-x-1 text-xs">
+        {user.photoURL && (
+          <img
+            src={user.photoURL}
+            alt={user.displayName || 'User'}
+            className="w-4 h-4 rounded-full"
+          />
+        )}
+        <span className="truncate text-gray-600">P{playerIndex}</span>
+      </div>
+      <button
+        onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
+        disabled={isLoading}
+        className={`flex items-center justify-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
+          isSubscribed
+            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+        } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        {isLoading ? (
+          <div className="animate-spin rounded-full h-3 w-3 border-b border-current"></div>
+        ) : isSubscribed ? (
+          <>
+            <UserCheck className="h-3 w-3" />
+            <span>Subscribed</span>
+          </>
+        ) : (
+          <>
+            <UserX className="h-3 w-3" />
+            <span>Subscribe</span>
+          </>
+        )}
+      </button>
+      {hasTicket && (
+        <button 
+          onClick={() => setShowTicket(true)}
+          className="flex items-center justify-center space-x-1 px-2 py-1 rounded text-xs bg-purple-100 text-purple-700 hover:bg-purple-200"
+        >
+          <Ticket className="h-3 w-3" />
+          <span>View Ticket</span>
+        </button>
+      )}
+      
+      {showTicket && (
+        <TambolaTicket
+          user={user}
+          tournamentId={tournament.id}
+          onClose={() => setShowTicket(false)}
+        />
+      )}
+    </div>
+  );
+};
 
 export const TournamentList: React.FC = () => {
   const { authenticatedUsers, currentEnvironment } = useAuth();
@@ -181,10 +303,19 @@ export const TournamentList: React.FC = () => {
                   </div>
                   
                   <div className="mt-3 pt-3 border-t border-gray-100">
-                    <button className="btn-primary text-sm w-full flex items-center justify-center space-x-1">
-                      <Play className="h-4 w-4" />
-                      <span>Subscribe for Testing</span>
-                    </button>
+                    <div className="space-y-2">
+                      <h6 className="text-xs font-medium text-gray-700">Subscribe Players:</h6>
+                      <div className="grid grid-cols-2 gap-2">
+                        {authenticatedUsers.map((user, index) => (
+                          <PlayerSubscribeButton
+                            key={`${tournament.id}-${user.id}`}
+                            tournament={tournament}
+                            user={user}
+                            playerIndex={index + 1}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
