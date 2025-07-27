@@ -4,24 +4,24 @@ import { getAnalytics, Analytics } from "firebase/analytics";
 
 // Test environment Firebase configuration
 const testFirebaseConfig = {
-  apiKey: "AIzaSyAKSq8rOW5fcGj7OUr4Il619kT_08gEZsA",
-  authDomain: "bluboy-test.firebaseapp.com",
-  projectId: "bluboy-test",
-  storageBucket: "bluboy-test.firebasestorage.app",
-  messagingSenderId: "407239566673",
-  appId: "1:407239566673:web:459e978a17072c92929f70",
-  measurementId: "G-FQ6TX394YK"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_TEST_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_TEST_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_TEST_PROJECT_ID!,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_TEST_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_TEST_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_TEST_APP_ID!,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_TEST_MEASUREMENT_ID!
 };
 
 // Production environment Firebase configuration
 const prodFirebaseConfig = {
-  apiKey: "AIzaSyBfJvX0eEcUqIJHn1zPVmRzoe45hJqcM6Y",
-  authDomain: "bluboy-production.firebaseapp.com",
-  projectId: "bluboy-production",
-  storageBucket: "bluboy-production.firebasestorage.app",
-  messagingSenderId: "465992098232",
-  appId: "1:465992098232:web:f82d21317ff60ef6aeef4d",
-  measurementId: "G-TD4X356TS5"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_PROD_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_PROD_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROD_PROJECT_ID!,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_PROD_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_PROD_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_PROD_APP_ID!,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_PROD_MEASUREMENT_ID!
 };
 
 export type Environment = 'test' | 'production';
